@@ -2,28 +2,30 @@
 session_start();
 require 'dbConnect.php';
 
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['signin'])) {
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $name = trim($_POST['name']);
     $email = trim($_POST['email']);
-    $password = trim($_POST['password']);
+    $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
 
     $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
     $stmt->execute([$email]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($user && password_verify($password, $user['password'])) {
-        $_SESSION['user_id'] = $user['school_id']; // Store user ID
-        $_SESSION['user_name'] = $user['name'];
-        $_SESSION['user_email'] = $user['email'];
-        header("Location: userdash.php");
+    if ($stmt->rowCount() > 0) {
+        $_SESSION['errors']['email'] = "Email already exists!";
+        header("Location: register.php");
         exit();
-    } else {
-        $_SESSION['errors']['login'] = "Invalid email or password!";
+    }
+
+    $stmt = $pdo->prepare("INSERT INTO users (name, email, password) VALUES (?, ?, ?)");
+    if ($stmt->execute([$name, $email, $password])) {
+        $_SESSION['success'] = "Registration successful! Please login.";
         header("Location: index.php");
         exit();
+    } else {
+        $_SESSION['errors']['register'] = "Registration failed!";
     }
 }
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -130,91 +132,281 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['signin'])) {
 	<!-- CONTENT -->
 
 	<!-- SCHOLARSHIP APPLICATION MODAL -->
-	<div id="scholarshipModal" class="modal">
-	    <div class="modal-content">
-	        <span class="close" id="closeModal">&times;</span>
-	        <h2>Scholarship Application</h2>
-	        <form action="apply_scholarship.php" method="POST">
-	            <label for="full_name">Full Name:</label>
-	            <input type="text" id="full_name" name="full_name" required>
+    <div id="scholarshipModal" class="modal">
+    <div class="modal-content">
+        <span class="close" id="closeModal">&times;</span>
+        <h2>UniFAST-TDP Scholarship Application</h2>
+        <form action="apply_scholarship.php" method="POST" enctype="multipart/form-data">
+            <!-- Personal Information -->
+            <h3>Personal Information</h3>
+            
+            <label for="last_name">Last Name:</label>
+            <input type="text" id="last_name" name="last_name" required>
 
-	            <label for="student_id">Student ID:</label>
-	            <input type="text" id="student_id" name="student_id" required>
+            <label for="first_name">First Name:</label>
+            <input type="text" id="first_name" name="first_name" required>
+
+            <label for="middle_name">Middle Name:</label>
+            <input type="text" id="middle_name" name="middle_name">
+
+            <label for="maiden_name">Maiden Name (For Married Women):</label>
+            <input type="text" id="maiden_name" name="maiden_name">
+
+            <label for="dob">Date of Birth:</label>
+            <input type="date" id="dob" name="dob" required>
+
+            <label for="place_of_birth">Place of Birth:</label>
+            <input type="text" id="place_of_birth" name="place_of_birth" required>
+
+            <label for="address">Permanent Address:</label>
+            <textarea id="address" name="address" required></textarea>
+
+            <label for="zip_code">Zip Code:</label>
+            <input type="text" id="zip_code" name="zip_code" required>
+
+            <!-- School Information -->
+            <h3>School Information</h3>
+
+            <label for="school_name">Name of School Attended:</label>
+            <input type="text" id="school_name" name="school_name" required>
+
+            <label for="school_id">School ID Number:</label>
+            <input type="text" id="school_id" name="school_id" required>
+
+            <label for="school_address">School Address:</label>
+            <textarea id="school_address" name="school_address" required></textarea>
+
+            <label for="school_sector">School Sector:</label>
+            <select id="school_sector" name="school_sector" required>
+                <option value="">-- Select --</option>
+                <option value="Public">Public</option>
+                <option value="Private">Private</option>
+            </select>
+
+            <label for="year_level">Year Level:</label>
+            <select id="year_level" name="year_level" required>
+                <option value="">-- Select --</option>
+                <option value="1st Year">1st Year</option>
+                <option value="2nd Year">2nd Year</option>
+                <option value="3rd Year">3rd Year</option>
+                <option value="4th Year">4th Year</option>
+            </select>
+
+            <!-- Contact Information -->
+            <h3>Contact Information</h3>
+
+            <label for="mobile_number">Mobile Number:</label>
+            <input type="text" id="mobile_number" name="mobile_number" required>
+
+            <label for="email">Email Address:</label>
+            <input type="email" id="email" name="email" required>
+
+            <!-- Family Background -->
+            <h3>Family Background</h3>
+
+            <label for="father_name">Father's Name:</label>
+            <input type="text" id="father_name" name="father_name">
+
+            <label for="mother_name">Mother's Name:</label>
+            <input type="text" id="mother_name" name="mother_name">
+
+            <label for="parents_income">Total Parents' Gross Income:</label>
+            <input type="text" id="parents_income" name="parents_income" required>
+
+            <label for="siblings">Number of Siblings in the Family:</label>
+            <input type="number" id="siblings" name="siblings" required>
+
+            <!-- Additional Information -->
+            <h3>Additional Information</h3>
+
+            <label for="financial_assistance">Are you enjoying other educational financial assistance?</label>
+            <select id="financial_assistance" name="financial_assistance" required>
+                <option value="">-- Select --</option>
+                <option value="No">No</option>
+                <option value="Yes">Yes</option>
+            </select>
+
+            <label for="financial_assistance_details">If yes, please specify:</label>
+            <input type="text" id="financial_assistance_details" name="financial_assistance_details">
+
+            <!-- Upload Required Documents -->
+            <h3>Upload Required Documents</h3>
+
+            <label for="id_picture">2x2 ID Picture:</label>
+            <input type="file" id="id_picture" name="id_picture" accept=".jpg,.png,.pdf" required>
+
+            <label for="cor">Certificate of Registration/Enrollment (COR/COE):</label>
+            <input type="file" id="cor" name="cor" accept=".pdf,.jpg,.png" required>
+
+            <label for="indigency">Certificate of Indigency:</label>
+            <input type="file" id="indigency" name="indigency" accept=".pdf,.jpg,.png" required>
+
+            <!-- Submit Button -->
+            <button type="submit">Submit Application</button>
+        </form>
+    </div>
+</div>
+    
+
+
+	<!-- SETTINGS MODAL -->
+	<div id="settingsModal" class="modal">
+	    <div class="modal-content">
+	        <span class="close" id="closeSettingsModal">&times;</span>
+	        <h2>Settings</h2>
+	        <form action="settings.php" method="POST">
+	            <label for="username">Username:</label>
+	            <input type="text" id="username" name="username" required>
 
 	            <label for="email">Email:</label>
 	            <input type="email" id="email" name="email" required>
 
-	            <label for="reason">Why do you need this scholarship?</label>
-	            <textarea id="reason" name="reason" required></textarea>
+	            <label for="password">New Password:</label>
+	            <input type="password" id="password" name="password">
 
-	            <button type="submit">Submit Application</button>
+	            <button type="submit">Save Changes</button>
 	        </form>
 	    </div>
 	</div>
 
-	<!-- SETTINGS MODAL -->
-<!-- SETTINGS MODAL -->
-<div id="settingsModal" class="modal">
-    <div class="modal-content">
-        <span class="close" id="closeSettingsModal">&times;</span>
-        <h2>Update Account</h2>
-        <form action="update_account.php" method="POST">
-            <label for="email">New Email:</label>
-            <input type="email" id="email" name="email" required>
-
-            <label for="password">New Password:</label>
-            <input type="password" id="password" name="password" required>
-
-            <button type="submit">Update Account</button>
-        </form>
-    </div>
-</div>
-
-
 	<!-- STYLES -->
 	<style>
-	    .modal {
-	        display: none;
-	        position: fixed;
-	        z-index: 1000;
-	        left: 0;
-	        top: 0;
-	        width: 100%;
-	        height: 100%;
-	        background-color: rgba(0, 0, 0, 0.5);
-	        display: flex;
-	        justify-content: center;
-	        align-items: center;
-	    }
-	    .modal-content {
-	        background: #fff;
-	        padding: 20px;
-	        border-radius: 10px;
-	        width: 400px;
-	        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-	    }
-	    .close {
-	        float: right;
-	        font-size: 24px;
-	        cursor: pointer;
-	    }
-	    input, textarea {
-	        width: 100%;
-	        padding: 8px;
-	        margin-top: 5px;
-	        border: 1px solid #ccc;
-	        border-radius: 5px;
-	    }
-	    button {
-	        margin-top: 10px;
-	        padding: 10px;
-	        background-color: #28a745;
-	        color: white;
-	        border: none;
-	        cursor: pointer;
-	        width: 100%;
-	        border-radius: 5px;
-	    }
+/* Modal Styling */
+/* Modal Background */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Modal Content (with scrolling enabled) */
+.modal-content {
+    background: #fff;
+    padding: 20px;
+    width: 50%;
+    max-width: 600px;
+    border-radius: 8px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+    position: relative;
+    animation: fadeIn 0.3s ease-in-out;
+    
+    /* Makes the modal scrollable */
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+/* Scrollbar Styling (for better UI) */
+.modal-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Modal Close Button */
+.close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 22px;
+    font-weight: bold;
+    color: #333;
+    cursor: pointer;
+}
+
+.close:hover {
+    color: red;
+}
+
+/* Form Styling */
+.modal-content h2 {
+    text-align: center;
+    margin-bottom: 15px;
+    font-size: 22px;
+    color: #333;
+}
+
+.modal-content h3 {
+    margin-top: 20px;
+    font-size: 18px;
+    color: #555;
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 5px;
+}
+
+label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #444;
+    display: block;
+    margin-top: 10px;
+}
+
+input, textarea, select {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+textarea {
+    resize: none;
+    height: 60px;
+}
+
+button {
+    display: block;
+    width: 100%;
+    background: #4CAF50;
+    color: white;
+    padding: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    margin-top: 20px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #45a049;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 90%;
+        max-height: 90vh;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
 	</style>
 
 	<!-- JAVASCRIPT -->
